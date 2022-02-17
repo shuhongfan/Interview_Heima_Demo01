@@ -1,0 +1,300 @@
+<!DOCTYPE HTML>
+<html lang="zh-CN">
+
+<head>
+	<meta charset="UTF-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>二分查找</title>
+	<link type="text/css" rel="stylesheet" href="css/bootstrap.min.css">
+	<!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+	<!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+	<!--[if lt IE 9]>
+      <script src="js/html5shiv.js"></script>
+      <script src="js/respond.min.js"></script>
+    <![endif]-->
+
+	<style>
+		body {
+			padding: 10px;
+			font-size: 13px;
+		}
+
+		.v {
+			width: 40px;
+			border: 0 solid black;
+		}
+
+		#container {
+			height: 300px;
+			position: relative;
+		}
+		.i:after {
+			left: 0px;
+			bottom: 0px;
+			font-size: 1.2em;
+			font-weight: bold;
+			background-color: yellow;
+			content: "[l]";
+			position: absolute;
+		}
+		.j:after {
+			left: 0px;
+			bottom: 0px;
+			font-size: 1.2em;
+			font-weight: bold;
+			background-color: yellow;
+			content: "[h]";
+			position: absolute;
+		}
+		.bg-gray{
+			background-color: grey;
+		}
+	</style>
+</head>
+
+<body>
+	<div class="container-fluid" id="c">
+		<div class="row">
+			<div class="col-lg-2">
+				<div class="input-group form-check form-check-inline">
+					<input type="text" class="form-control" placeholder="待查找值" id="v" >  
+				</div>
+			</div>
+			<div class="col-lg-2">
+				<div class="input-group form-check form-check-inline">
+					<input type="text" class="form-control" value="32" id="maxV" placeholder="元素个数">  
+				</div>
+			</div>
+			<div class="col-lg-3">
+				<button class="btn btn-default btn-sm btn-primary" id="auto" onclick="search(true)">自动播放</button>
+				<button class="btn btn-default btn-sm btn-warning" id="manual" onclick="search(false)">手动播放</button>
+				<button class="btn btn-default btn-sm btn-secondary" id="reset" onclick="javascript:resetColor()">复原</button>
+				<button class="btn btn-default btn-sm btn-secondary" id="reset" onclick="sort()">排序</button>
+			</div>
+			<div class="col-lg-8">
+
+			</div>
+		</div>
+		<div class="row" id="container"></div>
+	</div>
+	<script type="text/javascript" src="js/jquery-1.9.1.js"></script>
+	<script>
+		var atime = 200, ctime = 300;
+		var auto = false;
+		var running = false;
+		var template = $('<div class="progress active" style="position:absolute; bottom:20px;width:20px;"><div class="progress-bar" role="progressbar" aria-valuenow="60" aria-valuemin="0" aria-valuemax="100" style="width: 30px"></div></div>');
+		var index = $('<div class="progress active" style="position:absolute; bottom:0;left:20px;width:20px;"><div class="progress-bar bg-success" style="width: 20px"></div></div>');
+		var array = [];
+		
+
+		// 计算高度, 会根据最大最小值进行调整, 使之高度不会小于20, 不会大于100
+		function calculateHeight(value, min, max) {
+			return 20 + (value - min) / (max - min) * 80;
+		}
+
+		function resetColor() {
+			$(".progress").removeClass("i").removeClass("j");
+			$(".progress-bar").removeClass("bg-warning").removeClass("bg-gray").removeClass("bg-danger");
+			q1 = $({});
+			running = false;
+		}
+
+		// 初始化所有动画元素
+		let divArray = [];
+		function initArray(){
+			array = [];
+			var lastVal = 1;
+			var maxV = $("#maxV").val()-0;
+			for(let i = 0; i < maxV; i++) {
+				let v = lastVal+Math.max(Math.floor(Math.random()*(10)),1);
+				array.push(v);
+				lastVal=v;
+			}
+			shuffle(array)
+		}
+		function initDivArray() {		
+			divArray = [];	
+			//var array = [].slice.call($(".v")).map(v => v.value - 0);
+			let maxElement = Math.max.apply(null, array);
+			let minElement = Math.min.apply(null, array);
+			for (let i = 0; i < array.length; i++) {
+				let left = (i + 1) * 21;
+				var p = template.clone().css({ "left": left }).attr("id", "bar_" + i);
+				p.css("height", calculateHeight(array[i], minElement, maxElement));
+				p.find(".progress-bar:eq(0)").html(array[i]);
+				var x = index.clone().css({ "left": left }).attr("id", "p_" + i);
+				x.find(".progress-bar:eq(0)").html("[" + i + "]");
+				divArray.push({p:p, x:x});
+			}
+						
+		}
+		function render() {			
+			var c = $("#container");
+			c.empty();			
+			for (let i = 0; i < divArray.length; i++) {
+				divArray[i].p.appendTo(c);
+				divArray[i].x.appendTo(c);
+			}
+
+			var p = template.clone()
+				.attr("id", "hand")
+				.css("left", 21)
+				.css("top", 100)
+				.css("height", 20).appendTo(c);
+			p.find(".progress-bar:eq(0)").addClass("h").html("?");
+
+		}
+		initArray();
+		initDivArray();
+		render();
+
+		function shuffle(array) {
+			var index = -1,
+				length = array.length,
+				lastIndex = length - 1;
+			while (++index < length) {
+				// var rand = baseRandom(index, lastIndex),
+				var rand = index + Math.floor( Math.random() * (lastIndex - index + 1))
+				value = array[rand];	
+				array[rand] = array[index];	
+				array[index] = value;
+			}
+		}
+		function sort() {
+			console.log(array);
+			array = array.sort((a,b)=> a-b);
+			console.log(array);
+			initDivArray();
+			render();
+		}
+
+		$("#maxV").keyup(function(e) {
+			if(e.keyCode == 13) {
+				render();
+			}
+		});
+		
+
+		var q1 = $({});
+		function offer(fn, delay) {
+			q1.queue("q1", fn).delay(delay, "q1");
+		}
+
+		function doClearColor() {
+			offer(function (next) {
+				$(".progress-bar:not(.h):not(.bg-dark)").removeClass("bg-danger");
+				if (auto) next();
+			}, ctime);	
+		}
+
+		function doIndex(i,j) {
+			offer(function(next) {
+				$(".progress").removeClass("i").removeClass("j");
+				var $i = $("#p_" + i);
+				var $j = $("#p_" + j);
+				$i.addClass("i");
+				$j.addClass("j");
+				if (auto) next();
+			}, ctime);			
+		}
+
+		function clearIndex() {
+			offer(function(next) {
+				$(".progress").removeClass("i").removeClass("j");
+				if (auto) next();
+			}, ctime);			
+		}
+
+		// 结束动画
+		function doFinish() {
+			offer(function (next) {
+				$(".progress").removeClass("i").removeClass("j");
+				$(".v").prop("disabled", false);
+				$("#auto").prop("disabled", false);
+				$("#manual").prop("disabled", false);
+				running = false;
+			}, ctime);
+		}
+
+		function doCount(count) {
+			var $h = $("#hand");
+			$h.find(".progress-bar:eq(0)").html(count);
+		}
+
+		function markBar(x, count){
+			offer(function (next) {
+				doCount(count);
+				$("#bar_" + x).find(".progress-bar:eq(0)").addClass("bg-warning");
+				if (auto) next();
+			}, ctime);
+		}
+
+		function disableBar(x,y){
+			offer(function (next) {
+				for(let i = x; i <= y; i++) {
+					$("#bar_" + i).find(".progress-bar:eq(0)").addClass("bg-gray");
+				}				
+				if (auto) next();
+			}, ctime);
+		}
+
+		function fixBar(x){
+			offer(function (next) {
+				$("#bar_" + x).find(".progress-bar:eq(0)").addClass("bg-danger");
+				if (auto) next();
+			}, ctime);
+		}
+
+		function binarySearch(a, v) {
+			var i = 0;
+			var j = a.length - 1;
+			doIndex(i, j);
+			let count = 0;
+			while(i <= j) {
+				var m = (i + j) >>> 1;
+				count++;	
+				markBar(m, count);
+				var mv = a[m];
+				if(mv < v){
+					disableBar(i,m-1);
+					i = m + 1;
+					doIndex(i, j);					
+				} else if(mv > v) {
+					disableBar(m+1,j);
+					j = m - 1;
+					doIndex(i, j);
+				} else {
+					fixBar(m);
+					return m;
+				}							
+			}			
+			return -1;
+		}
+
+		// 开始排序
+		function search(a) {		
+			if(!running) {
+				$(".v").prop("disabled", true);
+				auto = a;
+				if (auto) {
+					$("#auto").prop("disabled", true);
+					$("#manual").prop("disabled", true);
+				}
+				var v = $("#v").val() - 0;
+				$(".progress-bar").removeClass("bg-dark");
+				var idx = binarySearch(array, v);			
+				doFinish();
+				running = true;
+			}	
+			play();
+		};
+
+		function play() {
+			q1.dequeue("q1");
+		}
+
+	</script>
+</body>
+
+</html>

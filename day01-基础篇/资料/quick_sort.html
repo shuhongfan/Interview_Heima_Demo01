@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="zh">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        canvas {
+            border: 1px solid black;
+            /* background-image: linear-gradient(to right, transparent 90%, #ccc 0),
+                linear-gradient(to bottom, transparent 90%, #ccc 0);
+            background-size: 8px 8px, 8px 8px; */
+        }
+    </style>
+</head>
+
+<body>
+    <input type="button" value="单边循环(Lomuto)" id="quick1" />
+    <input type="button" value="双边循环" id="quick2" />
+    <select id="fs"></select>
+    <input type="button" value="next" id="next" />
+    <input type="button" value="prev" id="prev" />
+    <input type="button" value="play" id="play" />
+    <div><canvas width="1024" height="300"></canvas></div>
+    <script src="rough.js"></script>
+    <script>
+        const RECT_WIDTH = 30;
+        const SPACEING = 5;
+        const CANVAS_WIDTH = 1024;
+        const CANVAS_HEIGHT = 300;
+        const RECT_MAX_HEIGHT = 100;
+        const RECT_MIN_HEIGHT = 20;
+        const ARROW_TOP = 30;
+        class Frame {
+            constructor(x, y, w, h, c, v, vx, vy, i, ix, iy, ic, itx, ity) {
+                this.x = x;     // 大矩形 x
+                this.y = y;     // 大矩形 y
+                this.w = w;     // 大矩形 w
+                this.h = h;     // 大矩形 h
+                this.c = c;     // 大矩形 c
+                this.v = v;     // 大矩形 v 即值
+                this.vx = vx;   // 值 x
+                this.vy = vy;   // 值 y
+                this.i = i;     // 索引值
+                this.ix = ix;   // 索引矩形 x
+                this.iy = iy;   // 索引矩形 y
+                this.ic = ic;   // 索引矩形 c
+                this.itx = itx; // 索引矩形值 x
+                this.ity = ity; // 索引矩形值 y
+            }
+        }
+        function addToSelect(idx, round) {
+            let option = document.createElement("option");
+            option.value = idx;
+            option.innerHTML = (round ? "[*]" : "") + "frame -> " + idx;
+            document.getElementById("fs").appendChild(option);
+        }
+        function clearSelect() {
+            document.getElementById("fs").innerHTML = "";
+        }
+        document.getElementById("fs").onchange = function () {
+            dd.drawFrame(this.value - 0)
+        }
+        class Draw {
+            constructor() {
+                this.canvas = document.querySelector('canvas');
+                this.ctx = document.querySelector('canvas').getContext('2d');
+                this.frames = [];
+                this.current = 0;
+            }
+            reset() {
+                this.canvas.width = CANVAS_WIDTH;
+                this.canvas.height = CANVAS_HEIGHT;
+            }
+            drawArrow(fx, fy, tx, ty, c) {
+                let theta = 30;
+                let headlen = 10;
+                let angle = Math.atan2(fy - ty, fx - tx) * 180 / Math.PI;
+                let a1 = (angle + theta) * Math.PI / 180;
+                let a2 = (angle - theta) * Math.PI / 180;
+                let topX = headlen * Math.cos(a1);
+                let topY = headlen * Math.sin(a1);
+                let bottomX = headlen * Math.cos(a2);
+                let bottomY = headlen * Math.sin(a2);
+
+                this.ctx.save();
+                this.ctx.translate(0, CANVAS_HEIGHT - RECT_MAX_HEIGHT - RECT_WIDTH - ARROW_TOP);
+                this.ctx.beginPath();
+                let ax = fx - topX;
+                let ay = fy - topY;
+
+                this.ctx.moveTo(ax, ay);
+                this.ctx.moveTo(fx, fy);
+                this.ctx.lineTo(tx, ty);
+
+                ax = tx + topX;
+                ay = ty + topY;
+                this.ctx.moveTo(ax, ay);
+                this.ctx.lineTo(tx, ty);
+
+                ax = tx + bottomX;
+                ay = ty + bottomY;
+                this.ctx.lineTo(ax, ay);
+                this.ctx.strokeStyle = c || 'black';
+                this.ctx.stroke();
+
+                this.ctx.restore();
+            }
+            drawFrame(idx) {
+                this.reset();
+                let frame = this.frames[idx];
+                frame.a.forEach(x => {
+                    this.drawElement(x)
+                })
+                this.current = idx;
+                if (frame.arrowi)
+                    this.drawArrow(frame.arrowi.fx, frame.arrowi.fy, frame.arrowi.tx, frame.arrowi.ty)
+                if (frame.arrowj)
+                    this.drawArrow(frame.arrowj.fx, frame.arrowj.fy, frame.arrowj.tx, frame.arrowj.ty)
+                if (frame.arrowp)
+                    this.drawArrow(frame.arrowp.fx, frame.arrowp.fy, frame.arrowp.tx, frame.arrowp.ty)
+            }
+            drawNextFrame() {
+                if (this.current + 1 < this.frames.length) {
+                    this.drawFrame(++this.current);
+                }
+            }
+            drawPrevFrame() {
+                if (this.current - 1 >= 0) {
+                    this.drawFrame(--this.current);
+                }
+            }
+            drawElement(r) {
+                this.ctx.save();
+                this.ctx.translate(0, CANVAS_HEIGHT - RECT_MAX_HEIGHT - RECT_WIDTH);
+
+                this.ctx.fillStyle = r.c;
+                this.ctx.beginPath();
+                this.ctx.rect(r.x, r.y, r.w, r.h);
+                this.ctx.fill();
+                this.ctx.lineWidth = .25;
+                this.ctx.stroke();
+
+                this.ctx.fillStyle = '#ffffff';
+                this.ctx.font = '1em Arial';
+                this.ctx.textAlign = 'center';
+                this.ctx.fillText(r.v, r.vx, r.vy);
+
+                if (r.i != undefined) {
+                    this.ctx.fillStyle = r.ic;
+                    this.ctx.beginPath();
+                    this.ctx.rect(r.ix, r.iy, r.w, r.w);
+                    this.ctx.fill();
+                    this.ctx.stroke();
+
+                    this.ctx.fillStyle = '#ffffff';
+                    this.ctx.font = '1em Arial';
+                    this.ctx.textAlign = 'center';
+                    this.ctx.fillText(r.i, r.itx, r.ity);
+                }
+
+                this.ctx.restore();
+
+            }
+            addFrame(obj) {
+                let { a, arrowi, arrowj, arrowp, set, colorPivot, colorLeft, colorRight, round } = { ...obj };
+                let max = Math.max(...a);
+                let min = Math.min(...a);
+                const array = [];
+                for (let i = 0; i < a.length; i++) {
+                    let h = limitHeight(a[i], min, max);
+                    let x = i * (RECT_WIDTH + SPACEING);
+                    let y = RECT_MAX_HEIGHT - h;
+                    let c = '#AAAAAA';
+                    if (colorPivot && colorPivot.has(i)) {
+                        c = '#0074D9';
+                    }
+                    if (colorLeft && colorLeft.has(i)) {
+                        c = '#7FDBFF';
+                    }
+                    if (colorRight && colorRight.has(i)) {
+                        c = '#B10DC9';
+                    }
+                    array.push(new Frame(
+                        x, y, RECT_WIDTH, h, set && set.has(i) ? 'black' : c,
+                        a[i], x + RECT_WIDTH / 2, y + h / 2 + 6,
+                        i, x, RECT_MAX_HEIGHT + SPACEING, '#28a745', x + RECT_WIDTH / 2, RECT_MAX_HEIGHT + SPACEING + RECT_WIDTH / 2 + 3
+                    ));
+                }
+
+                const frame = {};
+                frame.a = array;
+                if (arrowi) {
+                    let e = array[arrowi.i];
+                    let y = arrowi.top ? (- ARROW_TOP - RECT_MIN_HEIGHT - RECT_MIN_HEIGHT - 30) : (-ARROW_TOP - RECT_MIN_HEIGHT);
+                    array.push(new Frame(e.x, y, RECT_WIDTH, RECT_MIN_HEIGHT, '#ff0000',
+                        "i", e.vx, y + RECT_MIN_HEIGHT / 2 + 6
+                    ));
+
+                    frame.arrowi = arrowi;
+                    arrowi.fx = arrowi.tx = array[arrowi.i].x + RECT_WIDTH / 2;
+                    arrowi.fy = arrowi.top ? (- RECT_MIN_HEIGHT - 30) : 0;
+                    arrowi.ty = arrowi.top ? (- RECT_MIN_HEIGHT) : (array[arrowi.i].y + ARROW_TOP);
+                }
+                if (arrowj) {
+                    let e = array[arrowj.i];
+                    let y = arrowj.top ? (- ARROW_TOP - RECT_MIN_HEIGHT - RECT_MIN_HEIGHT - 30) : (-ARROW_TOP - RECT_MIN_HEIGHT);
+                    array.push(new Frame(e.x, y, RECT_WIDTH, RECT_MIN_HEIGHT, '#ff0000',
+                        "j", e.vx, y + RECT_MIN_HEIGHT / 2 + 6
+                    ));
+
+                    frame.arrowj = arrowj;
+                    arrowj.fx = arrowj.tx = array[arrowj.i].x + RECT_WIDTH / 2;
+                    arrowj.fy = arrowj.top ? (- RECT_MIN_HEIGHT - 30) : 0;
+                    arrowj.ty = arrowj.top ? (- RECT_MIN_HEIGHT) : (array[arrowj.i].y + ARROW_TOP);
+                }
+                if (arrowp) {
+                    let e = array[arrowp.i];
+                    let y = arrowp.top ? (-ARROW_TOP - RECT_MIN_HEIGHT - RECT_MIN_HEIGHT - 30) : (-ARROW_TOP - RECT_MIN_HEIGHT);
+                    array.push(new Frame(e.x, y, RECT_WIDTH, RECT_MIN_HEIGHT, '#ff0000',
+                        "pv", e.vx, y + RECT_MIN_HEIGHT / 2 + 6
+                    ));
+
+                    frame.arrowp = arrowp;
+                    arrowp.fx = arrowp.tx = array[arrowp.i].x + RECT_WIDTH / 2;
+                    arrowp.fy = arrowp.top ? (- RECT_MIN_HEIGHT - 30) : 0;
+                    arrowp.ty = arrowp.top ? (- RECT_MIN_HEIGHT) : (array[arrowp.i].y + ARROW_TOP);
+                }
+                this.frames.push(frame);
+                addToSelect(this.frames.length - 1, round)
+            }
+            clearFrames(a) {
+                this.frames = [];
+                //this.addFrame({ a: a });
+                this.current = 0;
+                clearSelect();
+            }
+            playFrames() {
+                if (this.current == this.frames.length - 1) {
+                    return;
+                }
+                this.drawFrame(++this.current);
+                setTimeout(() => {
+                    this.playFrames();
+                }, 300);
+            }
+        }
+
+        const dd = new Draw();
+        const a = [5, 3, 7, 2, 9, 8, 1, 4]//, 11,23,15,17,21,10];
+
+        function createArrow(i, top) {
+            let arrow = {};
+            arrow.i = i;
+            arrow.top = top || false;
+            return arrow;
+        }
+        function quick1(a) {
+            dd.clearFrames(a);
+            let set = new Set();
+            _quick1(a, 0, a.length - 1, set);
+            // dd.addFrame({ a: a, set: set})
+        }
+
+        function _quick1(a, l, h, set) {
+            if (l >= h) {
+                set.add(l);
+                dd.addFrame({ a: a, set: set });
+                return;
+            }
+            let p = _partition1(a, l, h, set);
+            set.add(p);
+            _quick1(a, l, p - 1, set);
+            _quick1(a, p + 1, h, set);
+        }
+
+        function _partition1(a, l, h, set) {
+            let pv = a[h];
+            let i = l;
+            let colorLeft = new Set();
+            let colorPivot = new Set();
+            colorPivot.add(h);
+            dd.addFrame({ a: a, set: set, round: true });
+            for (let j = l; j < h; j++) {
+                dd.addFrame({ a: a, arrowi: createArrow(i, true), arrowj: createArrow(j), arrowp: createArrow(h), set: set, colorPivot: colorPivot, colorLeft: colorLeft });
+                if (a[j] < pv) {
+                    colorLeft.add(j);
+                    dd.addFrame({ a: a, arrowi: createArrow(i, true), arrowj: createArrow(j), arrowp: createArrow(h), set: set, colorPivot: colorPivot, colorLeft: colorLeft });
+                    if (i != j) {
+                        swap(a, i, j);
+                        colorLeft.delete(j)
+                        colorLeft.add(i)
+                    }
+                    i++;
+                    dd.addFrame({ a: a, arrowi: createArrow(i, true), arrowj: createArrow(j), arrowp: createArrow(h), set: set, colorPivot: colorPivot, colorLeft: colorLeft });
+                }
+            }
+            if (i != h) {
+                swap(a, i, h);
+                colorPivot.delete(h);
+                colorPivot.add(i);
+                dd.addFrame({ a: a, arrowi: createArrow(i, true), arrowp: createArrow(h), set: set, colorPivot: colorPivot, colorLeft: colorLeft });
+            }
+            return i;
+        }
+
+        function quick2(a) {
+            dd.clearFrames(a);
+            let set = new Set();
+            _quick2(a, 0, a.length - 1, set);
+            // dd.addFrame({ a: a, set: set})
+        }
+
+        function _quick2(a, l, h, set) {
+            if (l >= h) {
+                set.add(l);
+                dd.addFrame({ a: a, set: set });
+                return;
+            }
+            let p = _partition2(a, l, h, set);
+            set.add(p);
+            _quick2(a, l, p - 1, set);
+            _quick2(a, p + 1, h, set);
+        }
+
+        function _partition2(a, l, h, set) {
+            let pv = a[l];
+            let i = l;
+            let j = h;
+            let colorLeft = new Set();
+            let colorRight = new Set();
+            let colorPivot = new Set();
+            dd.addFrame({ a: a, set: set, round: true });
+            colorPivot.add(l);
+            dd.addFrame({ a: a, arrowi: createArrow(i), arrowj: createArrow(j), arrowp: createArrow(l, true), set: set, colorPivot: colorPivot, colorLeft: colorLeft, colorRight: colorRight });
+            while (i < j) {
+                
+                while (i < j) {
+                    if (a[j] > pv) {
+                        colorRight.add(j);
+                        dd.addFrame({ a: a, arrowi: createArrow(i), arrowj: createArrow(j), arrowp: createArrow(l, true), set: set, colorPivot: colorPivot, colorLeft: colorLeft, colorRight: colorRight });
+                        j--;
+                    } else {
+                        colorLeft.add(j);
+                        dd.addFrame({ a: a, arrowi: createArrow(i), arrowj: createArrow(j), arrowp: createArrow(l, true), set: set, colorPivot: colorPivot, colorLeft: colorLeft, colorRight: colorRight });
+                        break;
+                    }
+
+                }
+
+                while (i < j) {
+                    if (a[i] <= pv) {
+                        if (i != l) {
+                            colorLeft.add(i);
+                            dd.addFrame({ a: a, arrowi: createArrow(i), arrowj: createArrow(j), arrowp: createArrow(l, true), set: set, colorPivot: colorPivot, colorLeft: colorLeft, colorRight: colorRight });
+                        };
+                        i++;
+                    } else {
+                        colorRight.add(i);
+                        dd.addFrame({ a: a, arrowi: createArrow(i), arrowj: createArrow(j), arrowp: createArrow(l, true), set: set, colorPivot: colorPivot, colorLeft: colorLeft, colorRight: colorRight });
+                        break;
+                    }
+
+                }
+                
+                if (i < j) {
+                    swap(a, i, j);
+                    colorLeft.delete(j)
+                    colorLeft.add(i)
+                    colorRight.delete(i)
+                    colorRight.add(j)
+                    dd.addFrame({ a: a, arrowi: createArrow(i), arrowj: createArrow(j), arrowp: createArrow(l, true), set: set, colorPivot: colorPivot, colorLeft: colorLeft, colorRight: colorRight });
+                }
+            }
+            if (i != l) {
+                dd.addFrame({ a: a, arrowi: createArrow(i), arrowj: createArrow(j), arrowp: createArrow(l, true), set: set, colorPivot: colorPivot, colorLeft: colorLeft, colorRight: colorRight });
+                swap(a, l, i);
+                colorPivot.delete(l);
+                colorPivot.add(i);
+                colorLeft.delete(i)
+                colorLeft.add(l)
+                dd.addFrame({ a: a, arrowi: createArrow(i), arrowj: createArrow(j), arrowp: createArrow(l, true), set: set, colorPivot: colorPivot, colorLeft: colorLeft, colorRight: colorRight });
+            }
+            return i;
+        }
+
+        function swap(a, i, j) {
+            let k = a[i];
+            a[i] = a[j];
+            a[j] = k;
+        }
+
+        function limitHeight(v, min, max) {
+            return RECT_MIN_HEIGHT + (v - min) / (max - min) * (RECT_MAX_HEIGHT - RECT_MIN_HEIGHT);
+        }
+
+        document.getElementById("quick1").onclick = function () {
+            quick1(a);
+        }
+
+        document.getElementById("quick2").onclick = function () {
+            quick2(a);
+        }
+
+        document.getElementById("next").onclick = function () {
+            dd.drawNextFrame();
+        }
+
+        document.getElementById("prev").onclick = function () {
+            dd.drawPrevFrame();
+        }
+
+        document.getElementById("play").onclick = function () {
+            dd.playFrames();
+        }
+
+        dd.addFrame({ a: a })
+        dd.drawFrame(0)
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="zh">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        canvas {
+            border: 1px solid black;
+            /* background-image: linear-gradient(to right, transparent 90%, #ccc 0),
+                linear-gradient(to bottom, transparent 90%, #ccc 0);
+            background-size: 8px 8px, 8px 8px; */
+        }
+    </style>
+</head>
+
+<body>
+    <input type="button" value="希尔" id="shell" />
+    <input type="button" value="next" id="next" />
+    <input type="button" value="prev" id="prev" />
+    <input type="button" value="play" id="play" />
+    <div><canvas width="1024" height="300"></canvas></div>
+    <script src="rough.js"></script>
+    <script>
+        const RECT_WIDTH = 30;
+        const SPACEING = 5;
+        const CANVAS_WIDTH = 1024;
+        const CANVAS_HEIGHT = 300;
+        const RECT_MAX_HEIGHT = 100;
+        const RECT_MIN_HEIGHT = 20;
+        const ARROW_TOP = 30;
+        class Frame {
+            constructor(x, y, w, h, c, v, vx, vy, i, ix, iy, ic, itx, ity) {
+                this.x = x;     // 大矩形 x
+                this.y = y;     // 大矩形 y
+                this.w = w;     // 大矩形 w
+                this.h = h;     // 大矩形 h
+                this.c = c;     // 大矩形 c
+                this.v = v;     // 大矩形 v 即值
+                this.vx = vx;   // 值 x
+                this.vy = vy;   // 值 y
+                this.i = i;     // 索引值
+                this.ix = ix;   // 索引矩形 x
+                this.iy = iy;   // 索引矩形 y
+                this.ic = ic;   // 索引矩形 c
+                this.itx = itx; // 索引矩形值 x
+                this.ity = ity; // 索引矩形值 y
+            }
+        }
+
+        class Draw {
+            constructor() {
+                this.canvas = document.querySelector('canvas');
+                this.ctx = document.querySelector('canvas').getContext('2d');
+                this.frames = [];
+                this.current = 0;
+            }
+            reset() {
+                this.canvas.width = CANVAS_WIDTH;
+                this.canvas.height = CANVAS_HEIGHT;
+            }
+            drawArrow(fx, fy, tx, ty, c) {
+                let theta = 30;
+                let headlen = 10;
+                let angle = Math.atan2(fy - ty, fx - tx) * 180 / Math.PI;
+                let a1 = (angle + theta) * Math.PI / 180;
+                let a2 = (angle - theta) * Math.PI / 180;
+                let topX = headlen * Math.cos(a1);
+                let topY = headlen * Math.sin(a1);
+                let bottomX = headlen * Math.cos(a2);
+                let bottomY = headlen * Math.sin(a2);
+
+                this.ctx.save();
+                this.ctx.translate(0, CANVAS_HEIGHT - RECT_MAX_HEIGHT - RECT_WIDTH - ARROW_TOP);
+                this.ctx.beginPath();
+                let ax = fx - topX;
+                let ay = fy - topY;
+
+                this.ctx.moveTo(ax, ay);
+                this.ctx.moveTo(fx, fy);
+                this.ctx.lineTo(tx, ty);
+
+                ax = tx + topX;
+                ay = ty + topY;
+                this.ctx.moveTo(ax, ay);
+                this.ctx.lineTo(tx, ty);
+
+                ax = tx + bottomX;
+                ay = ty + bottomY;
+                this.ctx.lineTo(ax, ay);
+                this.ctx.strokeStyle = c || 'black';
+                this.ctx.stroke();
+
+                this.ctx.restore();
+            }
+            drawFrame(idx) {
+                this.reset();
+                let frame = this.frames[idx];
+                frame.a.forEach(x => {
+                    this.drawElement(x)
+                })
+                if (frame.arrowj)
+                    this.drawArrow(frame.arrowj.fx, frame.arrowj.fy, frame.arrowj.tx, frame.arrowj.ty)
+            }
+            drawNextFrame() {
+                if (this.current + 1 < this.frames.length) {
+                    this.drawFrame(++this.current);
+                }
+            }
+            drawPrevFrame() {
+                if (this.current - 1 >= 0) {
+                    this.drawFrame(--this.current);
+                }
+            }
+            drawElement(r) {
+                this.ctx.save();
+                this.ctx.translate(0, CANVAS_HEIGHT - RECT_MAX_HEIGHT - RECT_WIDTH);
+
+                this.ctx.fillStyle = r.c;
+                this.ctx.beginPath();
+                this.ctx.rect(r.x, r.y, r.w, r.h);
+                this.ctx.fill();
+                this.ctx.lineWidth = .25;
+                this.ctx.stroke();
+
+                this.ctx.fillStyle = '#ffffff';
+                this.ctx.font = '1em Arial';
+                this.ctx.textAlign = 'center';
+                this.ctx.fillText(r.v, r.vx, r.vy);
+
+                if (r.i != undefined) {
+                    this.ctx.fillStyle = r.ic;
+                    this.ctx.beginPath();
+                    this.ctx.rect(r.ix, r.iy, r.w, r.w);
+                    this.ctx.fill();
+                    this.ctx.stroke();
+
+                    this.ctx.fillStyle = '#ffffff';
+                    this.ctx.font = '1em Arial';
+                    this.ctx.textAlign = 'center';
+                    this.ctx.fillText(r.i, r.itx, r.ity);
+                }
+
+                this.ctx.restore();
+
+            }
+            addFrame(obj) {
+                let { a, arrowj } = { ...obj };
+                let max = arrowj ? Math.max(...a, arrowj.v) : Math.max(...a);
+                let min = arrowj ? Math.min(...a, arrowj.v) : Math.min(...a);
+                let groups = arrowj ? arrowj.groups : [];
+                const array = [];
+                for (let i = 0; i < a.length; i++) {
+                    if (arrowj && arrowj.blanki === i) {
+                        a[arrowj.blanki] = min;
+                    }
+                    let h = limitHeight(a[i], min, max);
+                    let x = i * (RECT_WIDTH + SPACEING);
+                    let y = RECT_MAX_HEIGHT - h;
+                    let c = '#007bff';
+                    for(let k = 0; k < groups.length; k++) {
+                        if(groups[k].g.has(i)){
+                            c = groups[k].c;
+                        }  
+                    }
+                    array.push(new Frame(
+                        x, y, RECT_WIDTH, h, c,
+                        arrowj && arrowj.blanki === i ? "" : a[i], x + RECT_WIDTH / 2, y + h / 2 + 6,
+                        i, x, RECT_MAX_HEIGHT + SPACEING, '#28a745', x + RECT_WIDTH / 2, RECT_MAX_HEIGHT + SPACEING + RECT_WIDTH / 2 + 3
+                    ));
+                }
+
+                const frame = {};
+                frame.a = array;
+                if (arrowj) {
+                    let e = array[arrowj.i];
+                    let y = - ARROW_TOP - RECT_MIN_HEIGHT;
+                    let c = e.v > arrowj.v ? '#9932CC' : e.c;
+                    let v = arrowj.blankSelf ? '' : arrowj.v;
+                    e.c = c;
+                    array.push(new Frame(e.x, y, RECT_WIDTH, RECT_MIN_HEIGHT, c,
+                        v, e.vx, y + RECT_MIN_HEIGHT / 2 + 6
+                    ));
+
+                    frame.arrowj = arrowj;
+                    arrowj.fx = arrowj.tx = array[arrowj.i].x + RECT_WIDTH / 2;
+                    if (arrowj.reverse) {
+                        arrowj.fy = array[arrowj.i].y + ARROW_TOP;
+                        arrowj.ty = 0;
+                    } else {
+                        arrowj.fy = 0;
+                        arrowj.ty = array[arrowj.i].y + ARROW_TOP;
+                    }
+                }
+                this.frames.push(frame);
+            }
+            clearFrames(a) {
+                this.frames = [];
+                this.addFrame({ a: a });
+                this.current = 0;
+            }
+            playFrames() {
+                if (this.current == this.frames.length - 1) {
+                    return;
+                }
+                this.drawFrame(++this.current);
+                setTimeout(() => {
+                    this.playFrames();
+                }, 300);
+            }
+        }
+
+        const dd = new Draw();
+        const a = [9, 3, 7, 2, 5, 8, 1, 4];
+
+        function createArrow(i, option) {
+            let arrow = {};
+            let { v, blanki, reverse, blankSelf, groups } = { ...option }
+            arrow.i = i;
+            arrow.v = v;
+            arrow.blanki = blanki >= 0 ? blanki : -1;
+            arrow.blankSelf = blankSelf || false;
+            arrow.reverse = reverse || false;
+            arrow.groups = groups;
+            return arrow;
+        }
+        function getGroup(b, h, gap) {
+            let group = new Set();
+            let k;
+            for (k = b; k >= gap; k -= gap) {
+                group.add(k);
+            }
+            if (k >= 0) {
+                group.add(k);
+            }
+            for (k = b + gap; k < h; k += gap) {
+                group.add(k)
+            }
+            return group;
+        }
+        function getGroups(n, gap) {
+            let groups = [];
+            let colors = ['#1E90FF', '#87CEFA', '#FF7F50', '#FFD700', '#FFA500'];
+            let ci = 0;
+            let last = new Set();
+            for (let i = 0; i < n; i++) {
+                let g = new Set();
+                let j = i;
+                // console.log(i, last);
+                if (last.has(i)) {
+                    break;
+                }
+                while (j < n) {
+                    last.add(j);
+                    g.add(j);
+                    j += gap;
+                }
+                groups.push({ g: g, c: colors[ci++] });
+            }
+            return groups;
+        }
+        function shell(a) {
+            dd.clearFrames(a);
+            let n = a.length;
+            for (let gap = n >>> 1; gap > 0; gap = gap >>> 1) {
+                for (let i = gap; i < n; i++) {
+                    let groups = getGroups(n, gap);
+                    let v = a[i];
+                    let j = i;
+                    dd.addFrame({ a: a, arrowj: createArrow(i, { v: v, blanki: i, reverse: true, groups: groups }) });
+                    while (j >= gap) {
+                        dd.addFrame({ a: a, arrowj: createArrow(j - gap, { v: v, blanki: j, groups: groups }) });
+                        if (a[j - gap] > v) {
+                            a[j] = a[j - gap];
+                            dd.addFrame({ a: a, arrowj: createArrow(j - gap, { v: v, blanki: j - gap, groups: groups }) });
+                            j -= gap;
+                        } else {
+                            break;
+                        }
+                    }
+                    a[j] = v;
+                    dd.addFrame({ a: a, arrowj: createArrow(j, { v: v, blankSelf: true, groups: groups }) });
+                }
+                dd.addFrame({ a: a, i: a.length });
+            }
+        }
+
+        function swap(a, i, j) {
+            let k = a[i];
+            a[i] = a[j];
+            a[j] = k;
+        }
+
+        function limitHeight(v, min, max) {
+            return RECT_MIN_HEIGHT + (v - min) / (max - min) * (RECT_MAX_HEIGHT - RECT_MIN_HEIGHT);
+        }
+
+        document.getElementById("shell").onclick = function () {
+            shell(a);
+        }
+
+        document.getElementById("next").onclick = function () {
+            dd.drawNextFrame();
+        }
+
+        document.getElementById("prev").onclick = function () {
+            dd.drawPrevFrame();
+        }
+
+        document.getElementById("play").onclick = function () {
+            dd.playFrames();
+        }
+
+        dd.addFrame({ a: a })
+        dd.drawFrame(0)
+    </script>
+</body>
+
+</html>
