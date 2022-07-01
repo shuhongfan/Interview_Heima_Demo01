@@ -8,10 +8,10 @@ import java.lang.reflect.InvocationTargetException;
 
 public class TestSingleton {
     public static void main(String[] args) throws Exception {
-        Singleton5.otherMethod();
+        Singleton2.otherMethod();
         System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
-        System.out.println(Singleton5.getInstance());
-        System.out.println(Singleton5.getInstance());
+        System.out.println(Singleton3.getInstance());
+        System.out.println(Singleton3.getInstance());
 
         // 反射破坏单例
 //        reflection(Singleton3.class);
@@ -20,7 +20,7 @@ public class TestSingleton {
 //        serializable(Singleton3.getInstance());
 
         // Unsafe 破坏单例
-//        unsafe(Singleton3.class);
+//        unsafe(Singleton2.class);
     }
 
     private static void unsafe(Class<?> clazz) throws InstantiationException {

@@ -14,7 +14,7 @@ public class FailFastVsFailSafe {
         list.add(new Student("C"));
         list.add(new Student("D"));
         for (Student student : list) {
-            System.out.println(student);
+            System.out.println(student); // 并发修改异常 Exception in thread "main" java.util.ConcurrentModificationException
         }
         System.out.println(list);
     }
@@ -47,6 +47,7 @@ public class FailFastVsFailSafe {
     }
 
     public static void main(String[] args) {
+//        failFast();
         failSafe();
     }
 }

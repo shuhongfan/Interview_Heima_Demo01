@@ -8,16 +8,11 @@
         <outputRelativeToContentRoot value="true" />
         <module name="interview (3)" />
         <module name="interview (4)" />
+        <module name="Demo" />
         <module name="interview (1)" />
         <module name="interview (2)" />
       </profile>
     </annotationProcessing>
-    <bytecodeTargetLevel>
-      <module name="interview (1)" target="17" />
-      <module name="interview (2)" target="17" />
-      <module name="interview (3)" target="17" />
-      <module name="interview (4)" target="17" />
-    </bytecodeTargetLevel>
   </component>
   <component name="JavacSettings">
     <option name="ADDITIONAL_OPTIONS_OVERRIDE">

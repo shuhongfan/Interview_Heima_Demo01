@@ -6,7 +6,7 @@ import static day02.LoggerUtils.main;
 public class TestThreadState {
     static final Object LOCK = new Object();
     public static void main(String[] args) throws InterruptedException {
-        testWaiting();
+        testNewRunnableTerminated();
     }
 
     private static void testWaiting() {

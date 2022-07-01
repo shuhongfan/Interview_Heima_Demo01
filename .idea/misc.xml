@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
+  <component name="ExternalStorageConfigurationManager" enabled="true" />
   <component name="MavenProjectsManager">
     <option name="originalFiles">
       <list>
@@ -7,10 +8,11 @@
         <option value="$PROJECT_DIR$/day02-并发篇/代码/interview/pom.xml" />
         <option value="$PROJECT_DIR$/day03-虚拟机/代码/interview/pom.xml" />
         <option value="$PROJECT_DIR$/day04-框架篇/代码/interview/pom.xml" />
+        <option value="$PROJECT_DIR$/Demo/pom.xml" />
       </list>
     </option>
   </component>
-  <component name="ProjectRootManager" version="2" languageLevel="JDK_17_PREVIEW" project-jdk-name="17" project-jdk-type="JavaSDK">
+  <component name="ProjectRootManager" version="2" languageLevel="JDK_18" default="true" project-jdk-name="18" project-jdk-type="JavaSDK">
     <output url="file://$PROJECT_DIR$/out" />
   </component>
   <component name="ProjectType">
