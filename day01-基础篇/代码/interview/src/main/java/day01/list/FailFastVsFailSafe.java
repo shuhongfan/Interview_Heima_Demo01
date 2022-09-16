@@ -47,7 +47,7 @@ public class FailFastVsFailSafe {
     }
 
     public static void main(String[] args) {
-//        failFast();
-        failSafe();
+        failFast();
+//        failSafe();
     }
 }
